@@ -22,7 +22,8 @@ void SearchEngine::createNewIndex(const std::string& fpath) {
         std::cerr << "Error: Could not open the file!" << std::endl;
         return;
     }
-    std::string line; 
+    std::string line;
+    int doc {0};
     while (std::getline(file, line)) {
         std::istringstream ss(line);
         std::string doc_id, passage;
@@ -30,18 +31,22 @@ void SearchEngine::createNewIndex(const std::string& fpath) {
         std::getline(ss, doc_id, '\t');
         std::getline(ss, passage);
 
-        std::cout << "ID: " << doc_id << "\n";
+        try {
+            docMap[doc] = doc_id;
+        } catch (const std::exception& e) {
+            std::cerr << "skipping bad doc_id: " << doc_id << '\n';
+            continue;
+        }
 
         std::stringstream tokens {passage};
         std::string token;
-        
-        int id = std::stoi(doc_id);
         while(tokens >> token) {
-            invertedIndex[token][id]++;
+            invertedIndex[token][doc]++;
         }
-
-        break;
+        ++doc;
     }
+
+    saveToDisk();
 }
 
 void SearchEngine::loadIndex() {
@@ -54,8 +59,8 @@ void SearchEngine::loadIndex() {
         cereal::BinaryInputArchive archive {is};
         archive(this->invertedIndex);
     } 
-    catch(const cereal::Exception& e) {
-        std::cerr << "cereal deserialization error: " << e.what() << '\n';
+    catch(const std::exception& e) {
+        std::cerr << "failed to load index: " << e.what() << '\n';
     }
 }
 

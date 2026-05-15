@@ -16,6 +16,7 @@ using InvertedIndex = std::unordered_map<std::string, PostingList>;
 
 class SearchEngine {
     private:
+        std::unordered_map<int, std::string> docMap {};
         std::string sname {};
         InvertedIndex invertedIndex {};
         void buildIndex(const std::string& fpath);
