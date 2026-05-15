@@ -1,0 +1,4 @@
+data/corpus
+build/
+*.dSYM/
+.vscode
