@@ -14,21 +14,26 @@
 using PostingList = std::unordered_map<int, int>;
 using InvertedIndex = std::unordered_map<std::string, PostingList>;
 
-class SearchEngine {
+class Index {
     private:
-        std::unordered_map<int, std::string> docMap {};
-        std::string sname {};
-        InvertedIndex invertedIndex {};
+        
+        std::string iname {};
         void buildIndex(const std::string& fpath);
         void saveToDisk();
         void loadIndex();
         void createNewIndex(const std::string& fpath);
 
     public:
+        InvertedIndex invertedIndex {};
+        std::unordered_map<int, int> docLenMap {};
+        std::unordered_map<int, std::string> docMap {};
+        int totalTerms {};
+        int totalUniqueTerms {};
+        int numPassages {};
+        int avgdl {};
         void initialize(const std::string& fpath);
-        SearchEngine(const std::string& name);
+        Index(const std::string& name);
+        ~Index();
         
-
-
 
 };

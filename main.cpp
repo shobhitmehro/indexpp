@@ -1,7 +1,13 @@
-#include "src/SearchEngine.h"
+#include "src/index.h"
+#include "src/models.h"
+#include <iostream>
 
 int main() {
-    SearchEngine se {"search"};
-    se.initialize("data/corpus/antique-collection.tok.clean_kstem");
-
+    auto* index = new Index {"search"};
+    index->initialize("data/corpus/antique-collection.tok.clean_kstem");
+    Model bm25_model {Model::BM25};
+    auto* model_bm25 {new Models(bm25_model, *index)};
+    std::string query {"why do cat headbutt"};
+    std::cout << model_bm25->execute(query);
+    return 0;
 }

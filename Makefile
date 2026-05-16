@@ -6,15 +6,19 @@ INCLUDES := -I. -I/opt/homebrew/opt/cereal/include
 
 BUILDDIR := build
 TARGET   := $(BUILDDIR)/index++
-SRCS     := main.cpp src/SearchEngine.cpp
+SRCS     := main.cpp src/index.cpp src/models.cpp
 OBJS     := $(addprefix $(BUILDDIR)/, $(SRCS:.cpp=.o))
 
-.PHONY: all clean debug
+.PHONY: all clean debug asan
 
 all: $(TARGET)
 
 debug: CXXFLAGS += -g -O0
 debug: $(TARGET)
+
+asan: CXXFLAGS += -g -O0 -fsanitize=address -fno-omit-frame-pointer
+asan: LDFLAGS += -fsanitize=address
+asan: $(TARGET)
 
 $(TARGET): $(OBJS)
 	@mkdir -p $(BUILDDIR)
