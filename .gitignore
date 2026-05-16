@@ -2,3 +2,4 @@ data/corpus
 build/
 *.dSYM/
 .vscode
+search.index
