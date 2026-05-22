@@ -15,6 +15,10 @@ std::vector<std::pair<int, std::string>> Models::execute(std::string& query, int
             this->ql(k, query, result);
             break;
         }
+        case(Model::VSM): {
+            this->vsm(k, query, result);
+            break;
+        }
         default: break;
     }
     return result;
@@ -89,6 +93,49 @@ void Models::ql(int k, std::string& query, std::vector<std::pair<int, std::strin
             scoreMap.try_emplace(pid, baseline);
             double p_mle_wp = static_cast<double>(count) / target.docLenMap.at(pid);
             scoreMap[pid] += std::log((1.0 - lambda) * p_mle_wp + lambda * stats.p_mle_wC) - stats.log_bg;
+        }
+    }
+
+    std::priority_queue<
+        std::pair<double, int>,
+        std::vector<std::pair<double, int>>,
+        std::greater<std::pair<double, int>>
+    > pq;
+
+    for (const auto& [pid, score] : scoreMap) {
+        pq.push({score, pid});
+        if (pq.size() > static_cast<std::size_t>(k)) pq.pop();
+    }
+
+    while (!pq.empty()) {
+        res.push_back({pq.top().second, target.docMap.at(pq.top().second)});
+        pq.pop();
+    }
+    std::reverse(res.begin(), res.end());
+}
+
+void Models::vsm(int k, std::string& query, std::vector<std::pair<int, std::string>>& res, double b) {
+    std::istringstream iss {query};
+    std::string q_token;
+
+    std::unordered_map<std::string, int> queryTF {};
+    while (std::getline(iss, q_token, ' ')) queryTF[q_token]++;
+
+    std::unordered_map<int, double> scoreMap {};
+    double C = static_cast<double>(target.numPassages);
+    double avgdl = static_cast<double>(target.avgdl);
+
+    for (const auto& [term, qcount] : queryTF) {
+        auto it = target.invertedIndex.find(term);
+        if (it == target.invertedIndex.end()) continue;
+
+        double df = static_cast<double>(it->second.size());
+        double idf = std::log((C + 1.0) / df);
+
+        for (const auto& [pid, count] : it->second) {
+            double tf = std::log(1.0 + std::log(1.0 + static_cast<double>(count)));
+            double norm = 1.0 - b + b * (static_cast<double>(target.docLenMap.at(pid)) / avgdl);
+            scoreMap[pid] += static_cast<double>(qcount) * (tf / norm) * idf;
         }
     }
 

@@ -17,6 +17,7 @@ class Models {
         const Index& target;
         void bm25(int k, std::string& query, std::vector<std::pair<int, std::string>>& res, double b=0.75, double k1=1.2);
         void ql(int k, std::string& query, std::vector<std::pair<int, std::string>>& res, double lambda=0.2);
+        void vsm(int k, std::string& query, std::vector<std::pair<int, std::string>>& res, double b=0.75);
     public:
         Models(Model& name, const Index& ii);
         std::vector<std::pair<int, std::string>> execute(std::string& query, int k=5);

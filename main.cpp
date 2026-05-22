@@ -3,14 +3,17 @@
 #include <iostream>
 
 int main() {
-    auto* index = new Index {"search"};
-    index->initialize("data/corpus/antique-collection.tok.clean_kstem");
+    Index index {"search"};
+    index.initialize("data/corpus/antique-collection.tok.clean_kstem");
     Model bm25_model {Model::BM25};
     Model ql_model {Model::QL};
-    auto* model_bm25 {new Models(bm25_model, *index)};
-    auto* model_ql {new Models(ql_model, *index)};
+    Model vsm_movel {Model::VSM};
+    Models model_bm25 {bm25_model, index};
+    Models model_ql {ql_model, index};
+    Models model_vsm {vsm_movel, index};
     std::string query {"why do cat headbutt"};
-    std::cout << model_bm25->execute(query);
-    std::cout << model_ql->execute(query);
+    std::cout << model_bm25.execute(query) << '\n';
+    std::cout << model_ql.execute(query) << '\n';
+    std::cout << model_vsm.execute(query) << '\n';
     return 0;
 }
