@@ -23,9 +23,8 @@ private:
 
     std::unordered_map<std::string, int> vocab;
     std::vector<std::string> idx2word;
-    std::vector<std::vector<float>> W_in, W_out;  // [vocab_size x dim]
+    std::vector<std::vector<float>> W_in, W_out;  
 
-    // unigram^(3/4) noise table for negative sampling
     std::vector<int> noiseTable;
     std::mt19937 rng;
 
