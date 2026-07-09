@@ -9,8 +9,13 @@ void Index::initialize(const std::string& fpath) {
 void Index::buildIndex(const std::string& fpath) {
     std::string fname = this->iname + ".index";
     if (std::filesystem::exists(fname)) {
-        std::cout << "loading index from cache" << '\n';
+        std::cout << "loading index from cache\n";
         loadIndex();
+        // numPassages == 0 means the load failed (corrupted / format mismatch)
+        if (numPassages == 0) {
+            std::cout << "rebuilding index from corpus\n";
+            createNewIndex(fpath);
+        }
     } else {
         std::cout << "building new index from: " << fpath << '\n';
         createNewIndex(fpath);
@@ -38,7 +43,8 @@ void Index::createNewIndex(const std::string& fpath) {
             continue; 
         }
 
-        docMap[doc_count] = doc_id;
+        docMap[doc_count]        = doc_id;
+        reverseDocMap[doc_id]    = doc_count;
 
         std::stringstream tokens {passage};
         std::string token;
@@ -81,7 +87,9 @@ void Index::loadIndex() {
     try {
         {
             cereal::BinaryInputArchive archive {is};
-            archive(this->invertedIndex, this->docMap, this->numPassages, this->totalTerms, this->totalUniqueTerms, this->docLenMap, this->avgdl);
+            archive(this->invertedIndex, this->docMap, this->reverseDocMap,
+                    this->numPassages, this->totalTerms, this->totalUniqueTerms,
+                    this->docLenMap, this->avgdl);
         }
         is.close();
     } 
@@ -99,7 +107,9 @@ void Index::saveToDisk() {
         try {
             {
                 cereal::BinaryOutputArchive archive{os};
-                archive(this->invertedIndex, this->docMap, this->numPassages, this->totalTerms, this->totalUniqueTerms, this->docLenMap, this->avgdl);
+                archive(this->invertedIndex, this->docMap, this->reverseDocMap,
+                        this->numPassages, this->totalTerms, this->totalUniqueTerms,
+                        this->docLenMap, this->avgdl);
             } 
             os.close();
             std::cout << "Index saved successfully." << std::endl;
@@ -115,8 +125,52 @@ Index::~Index() {
     try {
         invertedIndex.clear();
         docMap.clear();
+        reverseDocMap.clear();
         docLenMap.clear();
     } catch (const std::exception& e) {
         std::cerr << "Error during memory deallocation: " << e.what() << std::endl;
     }
+}
+
+std::vector<std::pair<std::string, int>> Index::termFreqRanking() const {
+    std::vector<std::pair<std::string, int>> freq;
+    freq.reserve(invertedIndex.size());
+    for (const auto& [term, pl] : invertedIndex) {
+        int cf = 0;
+        for (const auto& [pid, cnt] : pl) cf += cnt;
+        freq.emplace_back(term, cf);
+    }
+    std::sort(freq.begin(), freq.end(),
+        [](const auto& a, const auto& b){ return a.second > b.second; });
+    return freq;
+}
+
+void Index::printZipfStats(int topN) const {
+    auto ranked = termFreqRanking();
+    if (ranked.empty()) return;
+
+    // Compute total tokens for relative freq
+    long long total = 0;
+    for (const auto& [t, f] : ranked) total += f;
+
+    std::cout << "\n=== Zipf's Law Analysis (top " << topN << " terms) ===\n";
+    std::cout << "rank\tterm\t\tcf\trelFreq\texpected(Zipf)\t\terror%\n";
+    double c = static_cast<double>(ranked[0].second); // Zipf constant ≈ top freq
+    for (int i = 0; i < topN && i < static_cast<int>(ranked.size()); ++i) {
+        double rank     = i + 1;
+        double expected = c / rank;
+        double actual   = ranked[i].second;
+        double err      = std::abs(actual - expected) / expected * 100.0;
+        // pad term for alignment
+        std::string term = ranked[i].first;
+        if (term.size() < 10) term.append(10 - term.size(), ' ');
+        std::cout << rank << '\t' << term << '\t'
+                  << ranked[i].second << '\t'
+                  << static_cast<double>(ranked[i].second) / total << '\t'
+                  << expected << '\t' << err << "%\n";
+    }
+    std::cout << "\nCorpus: " << numPassages << " passages, "
+              << totalTerms << " tokens, "
+              << totalUniqueTerms << " unique terms\n"
+              << "avgdl = " << avgdl << "\n\n";
 }

@@ -1,4 +1,6 @@
 #include "eval.h"
+#include <cmath>
+#include <algorithm>
 
 Evaluator::Evaluator(int qid, const std::string& query, const RankedList& rl) : 
     m_qid{qid}, 
@@ -14,15 +16,16 @@ Evaluator::Evaluator(Evaluator&& evaluator) :
     m_query{std::move(evaluator.m_query)}, 
     m_rl{std::move(evaluator.m_rl)}, 
     m_qrel{std::move(evaluator.m_qrel)} 
-    {};
+    {};\
 
 double Evaluator::evaluate(Metric m, int k) {
     switch(m) {
-        case(Metric::PRECISION): return calcPrecision(k);      
-        case(Metric::RECALL): return calcRecall(k);
-        case(Metric::F1): return calcF1(k);
-        case(Metric::RR): return calcRR(k);
-        default: break;
+        case(Metric::PRECISION): return calcPrecision(k);
+        case(Metric::RECALL):    return calcRecall(k);
+        case(Metric::F1):        return calcF1(k);
+        case(Metric::RR):        return calcRR(k);
+        case(Metric::NDCG):      return calcNDCG(k);
+        default:                 return 0.0;
     }
 }
 
@@ -125,12 +128,35 @@ std::optional<Qrel> Evaluator::loadQrel(const std::string& path) {
 }
 
 bool Evaluator::validListAndQuery(const Qrel& qrel) {
-    if(qrel.find(m_qid) == qrel.end()) return false;
+    // Only require the query ID to exist; unjudged passages count as non-relevant
+    return qrel.find(m_qid) != qrel.end();
+}
 
-    std::unordered_map<std::string, int> passage_rel {qrel.at(m_qid)};
+double Evaluator::calcNDCG(int k) {
+    if (!m_qrel) throw std::runtime_error("invalid query id");
+    const auto& passage_rel = m_qrel->at(m_qid);
 
-    for(const auto [i, pid] : m_rl) {
-        if(passage_rel.find(pid) == passage_rel.end()) return false;
+    // DCG of our ranked list
+    double dcg = 0.0;
+    int retrieved = 0;
+    for (const auto& [docId, passId] : m_rl) {
+        if (k > 0 && retrieved >= k) break;
+        ++retrieved;
+        auto it = passage_rel.find(passId);
+        double rel = (it != passage_rel.end()) ? static_cast<double>(it->second) : 0.0;
+        dcg += (std::pow(2.0, rel) - 1.0) / std::log2(retrieved + 1.0);
     }
-    return true;
+
+    // IDCG: ideal ranking (sort all judged docs by relevance desc)
+    std::vector<double> rels;
+    rels.reserve(passage_rel.size());
+    for (const auto& [pid, score] : passage_rel) rels.push_back(static_cast<double>(score));
+    std::sort(rels.rbegin(), rels.rend());
+
+    double idcg = 0.0;
+    int cutoff = (k > 0) ? std::min(k, static_cast<int>(rels.size())) : static_cast<int>(rels.size());
+    for (int i = 0; i < cutoff; ++i)
+        idcg += (std::pow(2.0, rels[i]) - 1.0) / std::log2(i + 2.0);
+
+    return idcg > 0.0 ? dcg / idcg : 0.0;
 }

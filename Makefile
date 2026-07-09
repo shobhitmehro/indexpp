@@ -6,7 +6,8 @@ INCLUDES := -I. -I/opt/homebrew/opt/cereal/include
 
 BUILDDIR := build
 TARGET   := $(BUILDDIR)/index++
-SRCS     := main.cpp src/index.cpp src/models.cpp src/word2vec.cpp src/eval.cpp
+SRCS     := main.cpp src/index.cpp src/models.cpp src/word2vec.cpp src/eval.cpp \
+            src/tokenizer.cpp src/crawler.cpp src/ltr.cpp
 OBJS     := $(addprefix $(BUILDDIR)/, $(SRCS:.cpp=.o))
 
 .PHONY: all clean debug asan

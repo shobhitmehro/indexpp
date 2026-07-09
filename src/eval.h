@@ -9,7 +9,7 @@
 
 // QREL -> ground truth judgements
 
-enum Metric {DEFAULT, PRECISION, RECALL, F1, RR};
+enum Metric {DEFAULT, PRECISION, RECALL, F1, RR, NDCG};
 
 using RankedList = std::vector<std::pair<int, std::string>>;
 using Qrel = std::unordered_map<int, std::unordered_map<std::string, int>>;
@@ -35,6 +35,7 @@ class Evaluator {
         double calcRecall(int k);
         double calcF1(int k);
         double calcRR(int k);
+        double calcNDCG(int k);
         bool validListAndQuery(const Qrel& qrel);
         std::optional<Qrel> loadQrel(const std::string& path);
 };
